@@ -1,0 +1,472 @@
+---
+title: "P3 EE binomial Irene Extremera Serrano"
+author: "Irene Extremera Serrano"
+date: "28/5/2020"
+output:
+  word_document: default
+  html_document: default
+---
+
+En esta práctica se va a estudiar la relación entre los altos niveles de Pb y las categorías socioeconómicas, teniendo en cuenta la estructura espacial de la información.
+Las variables con las que se trabajarán serán, el número de sectores (31 en total), el número de niños medidos, el número de niños con valores de plomo altos presentes en sangre de cada sector, los valores esperados de niños con altos niveles de plomo en sangre para cada sector en caso de que la probabilidad de tener altos niveles fuese la misma para todos los sectores y el distrito al que pertenecen.
+
+```{r}
+# Carga de librerias:
+# Libreria para la representación de mapas en R
+library("maptools")
+# Libreria para el cálculo de las relaciones de vecindad entre regiones
+library("spdep")
+# Libreria que define las estructuras básicas para datos espaciales vectoriales
+library("sf")
+#Leer la base de datos
+library('rgdal')
+#glm
+library(glmulti)
+```
+
+Lo primero a realizar es la generación de la matriz con los datos que se proporcionan.
+
+```{r}
+setwd('D:/Desktop/Remember/Estudios/Educación Formal/Máster/Máster Valencia/Bioestadística/Curso 1/20 3-6Modelización Avanzada/Estadística Espacial/Prácticas/Práctica 3')
+
+# Construccion variable respuesta
+sector <- c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31)
+Nniños <- c(5,10,6,14,7,9,5,17,14,11,16,15,9,13,10,12,9,8,7,13,11,14,10,9,6,8,8,6,7,8,9)
+pb <- c(2,5,2,3,3,5,1,4,1,2,1,5,0,3,4,7,4,3,3,7,9,11,5,4,2,3,5,2,3,6,4)
+ctg<-c('B','B','B','B','B','B','B','A','A','A','A','A','A','A','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','B','C')
+Esperados <-c(1.94, 3.89, 2.33, 5.44, 2.72, 3.50, 1.94, 6.61, 5.44, 4.28, 6.22, 5.83, 3.50, 5.06, 3.89, 4.67, 3.50, 3.11, 2.72,5.06, 4.28, 5.44, 3.89, 3.50, 2.33, 3.11, 3.11, 2.33, 2.72, 3.11, 3.50)
+Yres <- cbind( casos=pb, Dif_Total_Casos= Nniños-pb)
+
+# Leemos la cartografía de Valencia
+v <- matrix(ncol=7,nrow=31,c(sector=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),Nniños=c(5,10,6,14,7,9,5,17,14,11,16,15,9,13,10,12,9,8,7,13,11,14,10,9,6,8,8,6,7,8,9),pb=c(2,5,2,3,3,5,1,4,1,2,1,5,0,3,4,7,4,3,3,7,9,11,5,4,2,3,5,2,3,6,4),Esperados <-c(1.94, 3.89, 2.33, 5.44, 2.72, 3.50, 1.94, 6.61, 5.44, 4.28, 6.22, 5.83, 3.50, 5.06, 3.89, 4.67, 3.50, 3.11, 2.72,5.06, 4.28, 5.44, 3.89, 3.50, 2.33, 3.11, 3.11, 2.33, 2.72, 3.11, 3.50),ctg=c('B','B','B','B','B','B','B','A','A','A','A','A','A','A','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','B','C'),Yres))
+                
+colnames(v)<-c('Sector','Nniños','Observados','Esperados','Categorías','Yres 1','Yres 2')
+```
+
+A continuación se generará el polígono sobre el cual se pintarán los datos recogidos. Se generarán dos vectores, uno con las coordenadas x y el otro con las y. Se juntarán ambos en un objeto que en forma de lista se le aplicará la función st_polygon que se encarga de crear una función simple a partir de esa lista. 
+
+Una vez aplicado lo anterior a los 31 cuadrantes se agruparán todos en un objeto mediante la función st_sfc y a ese objeto resultante se transforma en un objeto sf con la función st_sf.
+
+```{r}
+x1<- c(2,3,3,2,2)
+y1<- c(11,11,12,12,11)
+c1<- cbind(x1,y1)
+P1 <- st_polygon(list(c1)) #Crea una función simple a partir de esta lista
+
+x2<- c(3,4,4,3,3)
+c2<- cbind(x2,y1)
+P2 <- st_polygon(list(c2))
+
+y2<- c(10,10,11,11,10)
+c3<- cbind(x1,y2)
+P3 <- st_polygon(list(c3))
+
+c4<- cbind(x2,y2)
+P4 <- st_polygon(list(c4))
+
+y3<- c(9,9,10,10,9)
+c5<- cbind(x1,y3)
+P5 <- st_polygon(list(c5))
+
+c6<- cbind(x2,y3)
+P6 <- st_polygon(list(c6))
+
+y4<- c(8,8,9,9,8)
+c7<- cbind(x1,y4)
+P7 <- st_polygon(list(c7))
+
+c8 <- cbind(x2,y4)
+P8 <- st_polygon(list(c8))
+
+y5<- c(7,7,8,8,7)
+c9<- cbind(x1,y5)
+P9 <- st_polygon(list(c9))
+
+c10<-cbind(x2,y5)
+P10 <- st_polygon(list(c10))
+
+y6 <- c(6,6,7,7,6)
+c11<- cbind(x1,y6)
+P11 <- st_polygon(list(c11))
+
+c12<- cbind(x2,y6)
+P12 <- st_polygon(list(c12))
+
+y7 <- c(5,5,6,6,5)
+c13 <- cbind(x1,y7)
+P13 <- st_polygon(list(c13))
+
+c14<- cbind(x2,y7)
+P14 <- st_polygon(list(c14))
+
+y8<-c(4,4,5,5,4)
+c15<- cbind(x1,y8)
+P15 <- st_polygon(list(c15))
+
+c16 <- cbind(x2,y8)
+P16 <- st_polygon(list(c16))
+
+y9<- c(3,3,4,4,3)
+c17<-cbind(x1,y9)
+P17 <- st_polygon(list(c17))
+
+c18<-cbind(x2,y9)
+P18 <- st_polygon(list(c18))
+y10<- c(2,2,3,3,2)
+c19 <- cbind(x1,y10)
+P19 <- st_polygon(list(c19))
+
+c20 <- cbind(x2,y10)
+P20 <- st_polygon(list(c20))
+
+y11<- c(1,1,2,2,1)
+c21 <- cbind(x1,y11)
+P21 <- st_polygon(list(c21))
+
+c22<-cbind(x2,y11)
+P22 <- st_polygon(list(c22))
+
+x3 <- c(4,5,5,4,4)
+x4<- c(5,6,6,5,5)
+
+c23<- cbind(x3,y7)
+P23 <- st_polygon(list(c23))
+
+c24<- cbind(x4,y7)
+P24 <- st_polygon(list(c24))
+
+c25<- cbind(x3,y8)
+P25 <- st_polygon(list(c25))
+
+c26<- cbind(x4,y8)
+P26 <- st_polygon(list(c26))
+
+c27<- cbind(x3,y9)
+P27 <- st_polygon(list(c27))
+
+c28<- cbind(x4,y9)
+P28 <- st_polygon(list(c28))
+
+c29<- cbind(x3,y10)
+P29 <- st_polygon(list(c29))
+
+c30<- cbind(x4,y10)
+P30 <- st_polygon(list(c30))
+
+c31<- cbind(x3,y11)
+P31 <- st_polygon(list(c31))
+
+# Junta varios sfg en un sfc (colección de simple features)
+geometria3 <- st_sfc(list(P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12,P13,P14,P15,P16,P17,P18,P19,P20,P21,P22,P23,P24,P25,P26,P27,P28,P29,P30,P31)) #Agrupación y transformación a objeto sf_dataframe
+
+# sf object
+SFPol <- st_sf( geometry = geometria3)
+```
+
+```{r}
+class(SFPol) # doble clase: simple feature y dataframe
+print(SFPol) # ver columna lista "geometry"
+```
+
+Se aprecia que el objeto final llamado SFPol es de tipo sf y también data.frame. Se aprecia que es de dos dimensiones, tipo polígono y dentro contiene varios polígonos que corresponden a cada uno de los distintos 31 cuadrantes de la ciudad de Valencia.
+
+Una vez conseguido el mapa, el siguiente paso será establecer las relaciones de vecindad. Para ello se hará uso de la función poly2bn() la cual determina como vecinos aquellos polígonos que son contiguos. Posteriormente al objeto resultante se le aplicará la función nb2WB() para transformar ese sistema de vecindades en listas de vecinos. Finalmente se hará una representación que ilustre a esos vecinos.
+
+```{r}
+#Relaciones de vecindad
+valencia.nb <- poly2nb(SFPol)
+
+# Transformación en listas de vecinos
+Vecinos<-nb2WB(valencia.nb)
+
+# Paleta de colores para pintar los mapas
+Paleta<-colorRampPalette(c("#FFAEB9", "#EE7AE9", "#9F79EE", "#7EC0EE", "#436EEE", "#27408B"))(6)
+par(mfrow=c(1,2), mar=c(0,0,1,0))
+
+# Mapa con el número de vecinos
+plot(SFPol,col=Paleta[findInterval(Vecinos$num,c(3,4,5,6,7,8))],axes=TRUE)
+title("Gráfica 1: Número de vecinos")
+legend(27,16,c("3","4","5","6","7",'8'),fill=Paleta)
+```
+
+Puede observar que el número de vecinos es mayor en los sectores interiores que coinciden con el distrito C y el número de vecinos es menor en sectores pertenecientes al distrito A y B. 
+
+Una vez establecidas las relaciones de vecindad se comenzará a ajustar diversos modelos.
+Pero antes se transformará el objeto v de matriz a data.frame para facilitar las operaciones con los modelos.
+
+```{r}
+#Transformo a lista
+v <- data.frame(list(sector=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),Nniños=c(5,10,6,14,7,9,5,17,14,11,16,15,9,13,10,12,9,8,7,13,11,14,10,9,6,8,8,6,7,8,9),pb=c(2,5,2,3,3,5,1,4,1,2,1,5,0,3,4,7,4,3,3,7,9,11,5,4,2,3,5,2,3,6,4),Esperados=c(1.94, 3.89, 2.33, 5.44, 2.72, 3.50, 1.94, 6.61, 5.44, 4.28, 6.22, 5.83, 3.50, 5.06, 3.89, 4.67, 3.50, 3.11, 2.72,5.06, 4.28, 5.44, 3.89, 3.50, 2.33, 3.11, 3.11, 2.33, 2.72, 3.11, 3.50),categorias=c('B','B','B','B','B','B','B','A','A','A','A','A','A','A','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','B','C')),Yres)
+```
+
+# VARIAS MODELIZACIONES DE LA VARIABLE RESPUESTA
+
+```{r}
+attach(v)
+```
+
+El primer modelo a realizar será el que solo incluye el intercept, se observará si hay diferencias entre los links logit, probit y cloglog para ver con cuál se continuará el resto del análisis.
+
+```{r}
+# Regresión de binomial
+#logit
+modelo1a<- glm(Yres~1,family = binomial)
+summary(modelo1a)
+
+#probit
+modelo11a<- glm(Yres~1,family = binomial(link='probit'))
+summary(modelo11a)
+
+#cloglog
+modelo111a<- glm(Yres~1,family = binomial(link='cloglog'))
+summary(modelo111a)
+```
+
+Se aprecia que no hay diferencia en el valor de AIC que siempre es el mismo (141.68), la deviance residual es igual a la deviance total (debido a que se compara el modelo nulo con el mismo), y los valores de los residuos deviance también son iguales.
+La única diferencia radica en el valor del intercept pero no de forma desmesurada, en los tres sale significativo. Por lo tanto el link a usar será logit ya que es el más sencillo de interpretar.
+
+A continuación se pintarán los residuos para ver si hay algún tipo de estructura espacial en la disposición de los datos que no haya sido explicada por el modelo.
+
+```{r}
+plot(SFPol,col=Paleta[findInterval(v$categorias,c(1,2,3))])
+title("Gráfica 2: Distritos")
+legend(10,10,c("A","B","C"),fill=Paleta)
+
+#Pinto el mapa de residuos
+plot(SFPol,col=Paleta[findInterval(resid(modelo1a),c(-10,-2,-1,0,1,2,10))])
+title("Gráfica 3: Residuos (nulo)")
+legend(7,11,c("<-1","(-1,-.65)","(-.65,0)",'(0,.5)',"(0.5,1)","1<"),fill=Paleta)
+
+# table(round(modelo1a$residuals,2))
+# modelo1a$residuals
+# summary(modelo1a$residuals)
+```
+
+Al comparar la gráfica 2, disposición de los distritos, con la gráfica 3, residuos del modelo nulo, se observa que los valores de los residuos correspondientes al distrito A muestran que los niños cuyo valores de plomo son superiores al valor permisible son menores en comparación a los distritos C y B (distritos más pobres). Además, se observa una mayor cantidad de niños con niveles altos de plomo en el distrito C que en el B, lo cual podría estar relacionado con que el distrito C es más pobre que el B y este más pobre que el A.
+
+Una vez visto esto se aprecia que hay una clara estructura espacial en los residuos, por lo que para asegurarlo se utilizarán el test de Mora y de Geary. En donde la hipótesis nula es que no hay autocorrelación espacial entre los residuos y la alternativa indica que si la hay.
+
+```{r}
+# Estudiamos la autocorrelación espacial en los residuos
+m1<-moran.test(resid(modelo1a),nb2listw(valencia.nb)) # Test de Moran
+g1<-geary.test(resid(modelo1a),nb2listw(valencia.nb)) # Test de Geary
+m1$p.value
+g1$p.value
+```
+
+Con p valores de 8.106e-06 y 4.757e-06 se rechaza la hipótesis nula por lo que hay una autocorrelación entre los residuos que no queda captada por el modelo.
+
+El siguiente modelo a plantear será el que incluye la variable categorías que hace referencia al distrito al que pertenece cada sector.
+
+```{r}
+#probit
+modelo2a<- glm(Yres~v$categorias,family = binomial)
+summary(modelo2a)
+
+#Deviance explicada
+100-(modelo2a$deviance/modelo2a$null.deviance)*100
+
+#Residuos deviance entre -2 y 2
+(sum(resid(modelo2a,type='deviance')>2) + sum(resid(modelo2a,type='deviance') < -2))/length(modelo2a$residuals)
+```
+
+Introduciendo esta variable se explica casi la mitad de los residuos deviance (50.36%) y su coeficiente sale significativo. Además el valor de AIC es más bajo en comparación al obtenido en el modelo nulo, 113.62 frente a 141.68. Aparte más del 0.05% (el 0.06% para ser exactas) de los residuos deviance están por encima de -2 y 2, lo cual no está del todo mal.
+
+Para ver si se ha conseguido captar esa autocorrelación espacial de los residuos se representan en un mapa.
+
+```{r}
+#Pintamos un mapa con los residuos
+plot(SFPol,col=Paleta[findInterval(resid(modelo2a),c(-2.5,-1,-.5,0,.5,1,2.5))])
+title("Gráfica 4: Residuos (categorías)")
+legend(7,11,c("<-1","(-1,-.75)","(-.75,0)",'(0,.5)',"(0.5,1)","1<"),fill=Paleta)
+```
+
+Con la introducción de la variable se aprecia que aun hay una predominancia de valores bajos en los sectores pertenecientes al distrito A, sin embargo, la diferencia no es tan marcada en este caso. Se aprecia que en el distrito B y C hay un aumento de valores bajos, lo cual es un indicativo de que la autocorrelación espacial ha disminuido.
+
+Para poder afirmar que ha disminuido esa autocorrelación espacial se aplicará el test de Moran y Geary.
+
+```{r}
+# Estudiamos la autocorrelación espacial en los residuos
+m2<-moran.test(resid(modelo2a),nb2listw(valencia.nb)) # Test de Moran
+g2<-geary.test(resid(modelo2a),nb2listw(valencia.nb)) # Test de Geary
+m2$p.value
+g2$p.value
+```
+
+Con un p valor de 0.5643 y 0.4192 se acepta la hipótesis nula de que no hay autocorrelación espacial entre los residuos. 
+Sin embargo, al disponer de la componente espacial se va a intentar generar una variable de interacción espacial para ver si puede conseguir una mejora en el modelo anterior.
+
+La primera variable de interacción espacial que va a usarse será la suma de los valores observados de los distritos vecinos de un sector.
+El modelo a realizar incluirá la variable de interacción espacial y posteriormente se realizará un modelo que incluya ambas variables, y de aquellos que hayan conseguido captar la estructura espacial de los residuos se usará un análisis $X^2$ de su diferencia de deviances para ver si hay diferencias entre ambos y así seleccionar el mejor.
+
+```{r}
+#Variable de interacción espacial 
+sumavec1<-function(i,v){sum(v[valencia.nb[[i]]])} 
+#Indica que se sumen cada indiviudo de la base de datos de la lista de vecinos.
+
+vintesp1<-sapply((1:31),sumavec1,v$pb)
+# Indica que del vecino 1 al 31 se aplique la función que he hecho antes sobre la variable pb de la base de datos.
+```
+
+```{r}
+#Incluyo la variable en el modelo probit
+modelo3a<-glm(Yres~vintesp1,family=binomial)
+summary(modelo3a)
+
+#Deviance explicada
+100-(modelo3a$deviance/modelo3a$null.deviance)*100
+
+#Residuos deviance entre -2 y 2
+(sum(resid(modelo3a,type='deviance')>2) + sum(resid(modelo3a,type='deviance') < -2))/length(modelo3a$residuals)
+```
+
+No me sale la variable de interacción espacial significativa, los residuos apenas varían y además aumenta el valor del AIC de 136.17 a 115.53. El porcentaje de deviance explicada es mucho menor 11.80% y mas del 5% de los residuos deviance quedan entre -2 y 2 (0.19).
+
+Además de que cuando se pintan los residuos se ven semenjanzas con respecto al modelo que no incluye la variable.
+
+```{r}
+#Pintamos un mapa con los residuos
+plot(SFPol,col=Paleta[findInterval(resid(modelo3a),c(-2.5,-1,-.5,0,.5,1,3))])
+title("Gráfica 5: Residuos (Ve1)")
+legend(7,11,c("<-6","(-6,-.4)","(-.4,0)",'(0,.4)',"(0.4,.6)",".6<"),fill=Paleta)
+```
+
+Se refleja en los residuos una clara autocorrelación espacial, en donde el distrito A presenta sectores con un menor número de niños con altos niveles de plomo en sangre y en el sector C los valores son mucho mayores. 
+Para confirmarlo se le pasará el test de Moran y Geary a estos residuos.
+
+```{r}
+# Estudiamos la autocorrelación espacial en los residuos
+m3<-moran.test(resid(modelo3a),nb2listw(valencia.nb)) # Test de Moran
+g3<-geary.test(resid(modelo3a),nb2listw(valencia.nb)) # Test de Geary
+m3$p.value
+g3$p.value
+```
+
+Efectivamente los residuos están autocorrelados pues los p valores del test de Moran y Gerary son 0.03202 y 0.01033 respectivamente.
+
+Por lo tanto se concluye que únicamente introduciendo la variable espacial no se consigue captar esa estructura espacial que reflejan los residuos, por ello el siguiente modelo a considerar será uno que incluya la variable espacial junto con las categorías.
+
+```{r}
+#Incluyo la variable en el modelo probit
+modelo4a<-glm(Yres~v$categorias+vintesp1,family=binomial)
+summary(modelo4a)
+
+#Deviance explicada
+100-(modelo4a$deviance/modelo4a$null.deviance)*100
+
+#Residuos deviance entre -2 y 2
+(sum(resid(modelo4a,type='deviance')>2) + sum(resid(modelo4a,type='deviance') < -2))/length(modelo4a$residuals)
+```
+
+No me sale la variable de interacción espacial significativa, los residuos apenas varían y además me aumenta el valor del AIC de 113.68 del modelo 2 frente a 115.53. El porcentaje de deviance explicada sigue siendo prácticamente la misma, 50.50%.
+Además de que cuando se pintan los residuos no se ven diferencias con respecto al modelo que solo incluía las categorías.
+
+```{r}
+#Pintamos un mapa con los residuos
+plot(SFPol,col=Paleta[findInterval(resid(modelo4a),c(-2.5,-1,-.5,0,.5,1,2.5))])
+title("Gráfica 6: Residuos (Cat & Ve1)")
+legend(7,11,c("<-1","(-1,-.75)","(-.75,0)",'(0,.5)',"(0.5,1)","1<"),fill=Paleta)
+```
+
+```{r}
+# Estudiamos la autocorrelación espacial en los residuos
+m4<-moran.test(resid(modelo4a),nb2listw(valencia.nb)) # Test de Moran
+g4<-geary.test(resid(modelo4a),nb2listw(valencia.nb)) # Test de Geary
+m4$p.value
+g4$p.value
+```
+
+Tal y como se aprecia en el mapa de residuos se ha conseguido la captación de esa estructura espacial además de que en los test de Moran y Geary los p valores siguen indicando que no hay autocorrelación espacial (0.4962 y 0.3565).
+
+```{r}
+pchisq(abs(modelo2a$deviance-modelo4a$deviance), abs(modelo2a$df.residual-modelo4a$df.residual),lower.tail = FALSE)
+```
+
+Además el análisis $X^2$ de la diferencia de deviances entre ambos modelos indica que no se rechaza la hipótesis nula de que haya diferencias entre ambos modelos. Por lo tanto, en caso de quedarse con uno de los dos sería el que no incluye la variable de interacción espacial.
+
+Otra de las relaciones de vecindad será la de introducir como covariable el número de casos en los sectores vecinos dividido por el número de casos esperados en los sectores vecinos. De esta forma tengo en cuenta la población que hay en esos distritos.
+
+```{r}
+#Variable de interacción espacial 
+sumavec2<-function(i){sum(v$pb[valencia.nb[[i]]])/(sum(v$Esperados[valencia.nb[[i]]])+0.5)} #0.5 es por si en alguno el valor es cero
+# Lo que hago es mirar si la relación de vecindad puede ser explicada por la relación entre observados individuales entre esperados de los casos vecinos.
+
+vintesp2<-sapply((1:31),sumavec2)
+```
+
+Se ajustará por un lado el modelo con la variable de interacción espacial únicamente y un modelo que contenga ambas.
+
+```{r}
+#Modelos
+modelo5a<-glm(Yres~vintesp2,family=binomial) #Sin la variable categorías
+summary(modelo5a)
+modelo6a<-glm(Yres~v$categorias+vintesp2,family=binomial) #Sin la variable categorías
+summary(modelo6a)
+
+#Deviance explicada
+100-(modelo5a$deviance/modelo5a$null.deviance)*100
+100-(modelo6a$deviance/modelo6a$null.deviance)*100
+
+#Residuos deviance entre -2 y 2
+(sum(resid(modelo5a,type='deviance')>2) + sum(resid(modelo5a,type='deviance') < -2))/length(modelo5a$residuals)
+(sum(resid(modelo6a,type='deviance')>2) + sum(resid(modelo6a,type='deviance') < -2))/length(modelo6a$residuals)
+```
+
+En ambos modelos se observa que el AIC es mayor (120.68 y 115.13) al mejor modelo hasta ahora que solo incluía categorías (113.68).
+Por otro lado, el modelo con solo la variable de interacción explica un bajo porcentaje de deviance (36.13%) mientras que el que combina ambas es el que consigue explicar mas de los modelos obtenidos hasta ahora (51.14%).
+Además, algo positivo de ambos modelos es que sus residuos deviances quedan en su mayoría entre -2 y 2 en ambos modelos (0.03 y 0).
+
+A continuación se hará la representación de los residuos de ambos modelos.
+
+```{r}
+plot(SFPol,col=Paleta[findInterval(resid(modelo5a),c(-3,-1.5,-.5,0,.5,1.5,3))])
+title("Gráfica 7: Residuos (Ve2)")
+legend(7,11,c("<-1.5","(-1.5,-.5)","(-.5,0)",'(0,.5)',"(0.5,1.5)","1.5<"),fill=Paleta)
+
+plot(SFPol,col=Paleta[findInterval(resid(modelo6a),c(-2.5,-1,-.5,0,.5,1,2.5))])
+title("Gráfica 8: Residuos (Cat & Ve2)")
+legend(7,11,c("<-1","(-1,-.5)","(-.5,0)",'(0,.5)',"(0.5,1.5)","1.5<"),fill=Paleta)
+```
+
+Parece que en las distintas representaciones la estructura espacial de los residuos queda explicada por el modelo, pero para asegurarse se usarán los test de autocorrelación.
+
+```{r}
+#Autocorrelación espacial en los residuos
+m5<-moran.test(resid(modelo5a),nb2listw(valencia.nb)) # Test de Moran
+g5<-geary.test(resid(modelo5a),nb2listw(valencia.nb)) # Test de Geary
+m5$p.value
+g5$p.value
+
+m6<-moran.test(resid(modelo6a),nb2listw(valencia.nb)) # Test de Moran
+g6<-geary.test(resid(modelo6a),nb2listw(valencia.nb)) # Test de Geary
+m6$p.value
+g6$p.value
+```
+
+Ambos test para ambos modelos indican no evidencia de rechazar la hipótesis nula de que los residuos no están autocorrelados espacialmente.
+Por lo que hasta ahora los mejores modelos obtenidos son el modelo 2 (solo incluye categorías) y el modelo 6 (incluye categorías y la segunda variable de interacción espacial). Para ello se realizará un test $X^2$ para comprobar si hay o no diferencias significativas entre ambos modelos.
+
+```{r}
+pchisq(abs(modelo2a$deviance-modelo6a$deviance), abs(modelo2a$df.residual-modelo6a$df.residual),lower.tail = FALSE)
+```
+
+Se aprecia que no hay diferencias entre ambos modelos, por lo que lo idóneo sería quedarse con el modelo más sencillo, en este caso el modelo 2:
+
+$logit(\pi_i)= \alpha+C_i$
+
+La conclusión obtenida es que no siempre la variable de interacción espacial es necesario incluirla. Sin embargo, como propuesta de futuro (cuando disponga de más conocimiento y soltura) probablemente planteando otra forma de definir la variable de interacción espacial podría mejorarse mucho mas el modelo.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

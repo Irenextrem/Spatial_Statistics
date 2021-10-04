@@ -1,0 +1,303 @@
+---
+title: "Práctica 1 EE Irene Extremera Serrano"
+author: "Irene Extremera Serrano"
+date: "30/4/2020"
+output: word_document
+---
+
+# Tarea: Altitud del terreno
+
+# Analiza los datos de la elevación del terreno observada en 52 puntos del mismo. 
+
+```{r, warning=FALSE,message=FALSE, fig.width=10, fig.height=5, fig.align="center"}
+library(scatterplot3d)
+library(geoR)
+source("altitud.r")
+attach(altitud)
+par(mfrow = c(1,2))
+plot(x,y,type="n")
+text(x,y,alt)
+scatterplot3d(x,y,alt)
+detach(altitud)
+```
+
+En la primera gráfica se pueden observar los ejes de coordenadas x e y y la disposición en el espacio de la variable altitud. Se puede observar en el gráfico de tres dimensiones cómo se dispondrían esos puntos en el espacio. Sin embargo, ambas gráficas no me permiten interpretar con seguridad la relación entre la altitud y los ejes para ver si hay o no tendencia.
+
+```{r, warning=FALSE,message=FALSE, fig.width=8, fig.height=8, fig.align="center"}
+alt.geo<-as.geodata(altitud)
+plot(alt.geo)
+```
+
+En este gráfico se puede observar que hay una tendencia, en donde en el gráfico de arriba a la derecha los valores de altitud más altos se encuentran a lo largo del eje x y tomando en el eje y valores muy bajos, a medida que los valores en y aumentan disminuye el valor de la altitud. Esto se confirma observando las otras dos gráficas que enfrentan los ejes con la variable altitud. Para valores bajos de y la altitud toma valores altos, en las coordenadas x para valores bajos la altitud es alta y va disminuyendo a medida que se acerca a la coordenada 3.5, a partir de ahi la altitud vuelve a incrementarse considerablemente.
+
+Finalmente el último gráfico es un histograma y se puede apreciar que la mayor parte de los datos de altitud son valores altos que se encuentran entre 800 y 900.
+
+Con esto concluyo que los datos presentan una tendencia y por ello a continuación estudiaré la estructura del variograma.
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+# Determina si existe algún tipo de tendencia, y estudia la estructura del variograma.
+
+El variograma es una función que expresa la varianza de la diferencia que hay entre dos variables aleatorias en función de la distancia. 
+Para estimar el variograma de la altitud utilizaré los datos para obtener una estimación empírica de este para posteriormente busca un modelo teórico que más se le parezca. 
+El estimador elegido para el variograma es un método más robusto que el método de los momentos que se indica en la función variog() en el argumento estimator.type="modulus".
+
+(He probado distintas altitudes para la generación de los gráficos que vienen a continuación pero únicamente incluiré aquí la amplitud definitiva)
+
+```{r, warning=FALSE,message=FALSE, fig.width=6, fig.height=4, fig.align="center"}
+# El estimador robusto evita el efecto de los extremos sobre la media.
+alt.cl<-variog(alt.geo,option="cloud",estimator.type="modulus",messages=F)
+plot(alt.cl,pch=20)
+
+#Variograma empírico
+alt.v<-variog(alt.geo,uvec=seq(0,8,1),estimator.type="modulus",messages=F)
+plot(alt.v,pch=20)
+
+# Variabilidad de los cuadrados de las diferencias
+alt.vc<-variog(alt.geo,uvec=seq(0,8,1),estimator.type="modulus",bin.cloud=T,messages=F)
+plot(alt.vc,bin.cloud=T)
+```
+
+En la primera gráfica que enfrenta la distancia de unos puntos a otros con la semivarianza aparecen toda la nube de puntos de la cual está constituida el variograma.
+El siguiente gráfico agrupa por intervalos los puntos obtenidos en el variograma anterior y se puede apreciar que hay una mayor variación en la distancia entre puntos a distancias medias que a distancias bajas y altas, lo cual hace que el variograma tenga un aspecto de V invertida.
+Finalmente se realiza un diagrama de cajas en donde se puede apreciar lo visto anteriormente. A distancias cortas y altas hay mucha menos variabilidad entre los distintos puntos de altitud que en puntos que se encuentran a distancias medias. Esto puede apreciarse en los diagramas de cajas que se encuentran en los extremos pues son mucho más cortos.
+
+Una vez obtenido el modelo empírico del variograma busco el modelo teórico de los disponibles en R que mejor se le ajuste. Para ello hago uso de la función linkfit(). En el argumento ini() indico  hasta qué valores sube el variograma y en qué momento de la distancia alcanza ese valor.
+Cada una de los modelos teóricos que van a usarse tienen unos parámetros asociados, lo idoneo sería encontrar el valor del parámetro óptimo mediante validación cruzada por ejemplo. Sin embargo, a no ser esto objeto de la práctica he mantenido los valores de los parámetros que se usan en la práctica de acuifer.
+
+```{r, warning=FALSE,message=FALSE,  fig.width=8, fig.height=4, fig.align="center"}
+alt.exp.ml<-likfit(geodata = alt.geo, ini = c(6000, 5),messages=F)
+alt.sph.ml<-likfit(geodata = alt.geo, ini = c(6000, 5), cov.model="sph",messages=F)
+alt.mat.ml<-likfit(geodata = alt.geo, ini = c(6000, 5),cov.model="mat",kappa=1.5,messages=F)
+alt.mat2.ml<-likfit(geodata = alt.geo, ini = c(6000, 5),cov.model="mat",kappa=1,fix.nugget=T,messages=F)
+alt.cir.ml<-likfit(geodata = alt.geo, ini = c(6000, 5),cov.model="cir",messages=F)
+alt.cub.ml<-likfit(geodata = alt.geo, ini = c(6000, 5),cov.model="cub",messages=F)
+alt.pow.ml<-likfit(geodata = alt.geo, ini = c(6000, 5),cov.model="powered.exponential",kappa=1.75,messages=F)
+alt.pow2.ml<-likfit(geodata = alt.geo, ini = c(6000, 5),cov.model="powered.exponential",kappa=1.75,fix.nugget=T,messages=F)
+```
+
+A continuación se representan los distintos modelos teóricos sobre los puntos del variograma. La selección del mejor modelo se hará observando cuál de las curvas se asemeja más a los datos del variograma.
+
+```{r}
+plot(alt.v)
+lines(alt.pow2.ml,max.dist=8,lwd=3,col='red')
+lines(alt.mat2.ml,max.dist=8,lwd=3,col='blue')
+lines(alt.pow.ml,max.dist=8,lwd=3,col='green')
+lines(alt.mat.ml,max.dist=8,lwd=3,col='yellow')
+lines(alt.cub.ml,max.dist=8,lwd=3,col='orange')
+lines(alt.cir.ml,max.dist=8,lwd=3,col='grey')
+lines(alt.exp.ml,max.dist=8,lwd=3,col='magenta')
+lines(alt.sph.ml,max.dist=8,lwd=3,col='pink')
+```
+
+Me fijo en los modelos teóricos que mejor se ajustan en los primeros valores del variograma, por lo que me quedo finalmente con los modelos powered.exponential, mat (matern)  (ambos sin el parámetro $\tau^2$)y sph (spherical).
+
+El siguiente paso va a ser estimar los parámetros del modelo que mejor se aproxima, que en este caso ha sido matern sin el parámetro $\tau^2$, mediante máxima verosimilitud, máxima verosimilitud restringida y mínimos cuadrados ordinarios.
+
+```{r, warning=FALSE,message=FALSE, fig.width=8, fig.height=4, fig.align="center"}
+# Diferentes metodos de ajuste del variograma
+alt.mat2.ml<-likfit(geodata = alt.geo, ini = c(6000,5),cov.model="mat",kappa=1,messages=F,fix.nugget=T)
+alt.mat2.rml<-likfit(geodata = alt.geo, ini = c(6000,5),cov.model="mat",kappa=1,method='RML',messages=F,fix.nugget=T)
+alt.mat2.ols<-variofit(vario = alt.v, ini = c(6000,5), cov.model="mat", kappa=1, weights="equal", minimisation.function="optim", messages=F, fix.nugget=T)
+alt.mat2.wls<-variofit(vario = alt.v, ini = c(6000,5),cov.model="mat",kappa=1,weights="npairs",messages=F,fix.nugget=T)
+
+plot(alt.v)
+lines(alt.mat2.ml,max.dist=8,lwd=3)
+lines(alt.mat2.rml,max.dist=8,lwd=3,lty=2)
+lines(alt.mat2.ols,max.dist=8,lwd=3,lty=3)
+lines(alt.mat2.wls,max.dist=8,lwd=3,lty=4)
+legend(0,6000,legend=c('ML','RML','OLS','WLS'),lty=c(1,2,3,4))
+```
+
+El mejor método de estimación de los parámetros es el obtenido en alt.mat2.wls (mínimos cuadrados ordinarios), pues como puede apreciarse en la gráfica se ajusta perfectamente a los datos del variograma.
+
+```{r}
+alt.pow2.ml<-likfit(geodata = alt.geo, ini = c(6000,5),cov.model="powered.exponential",kappa=1.75,messages=F, lik.method = 'ML',fix.nugget=T)
+alt.pow2.rml<-likfit(geodata = alt.geo, ini = c(6000, 5), cov.model="powered.exponential",kappa=1.75,lik.method ='RML',messages=F, fix.nugget=T)
+alt.pow2.ols<-variofit(vario = alt.v, ini = c(6000,5), cov.model="powered.exponential", kappa=1.75, weights="equal", minimisation.function="optim", messages=F, fix.nugget=T)
+alt.pow2.wls<-variofit(vario = alt.v, ini = c(6000, 5),cov.model="powered.exponential",kappa=1.75,weights="npairs",messages=F)
+```
+
+```{r}
+plot(alt.v)
+lines(alt.pow2.ml,max.dist=8,lwd=3)
+lines(alt.pow2.rml,max.dist=8,lwd=3,lty=2)
+lines(alt.pow2.ols,max.dist=8,lwd=3,lty=3)
+lines(alt.pow2.wls,max.dist=8,lwd=3,lty=4)
+legend(0,6000,legend=c('ML','RML','OLS','WLS'),lty=c(1,2,3,4))
+```
+
+Lo mismo ocurre aquí, el ajuste mediante mínimos cuadrados ponderados es la que mejor se acerca a los valores del variograma.
+Se puede observar que aproximadamente un 80% la variación de los datos originales se explica por la tendencia de los valores. El otro pequeño porcentaje (20%) puede ser interpolado mediante kriging.
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+# Emplea el análisis de la tendencia y del variograma para realizar una predicción de la altitud del terreno en el punto de coordenadas (3,3). 
+
+## Ajuste de tendencia polinomial (probar con distintos grados para que no haya cambios relevantes)
+
+Lo primero que se realizará será un ajuste de tendencia polinomial para poder representar la superficie de tendencia.
+
+```{r, warning=FALSE,message=FALSE, fig.width=4, fig.height=4, fig.align="center"}
+# Cálculo de superficies de tendencia
+library(spatial)
+attach(altitud)
+alt.ls<-surf.ls(3,x,y,alt)
+# summary(y)
+```
+
+```{r, warning=FALSE,message=FALSE, fig.width=8, fig.height=4, fig.align="center"}
+# Representación de superficies de tendencia
+alt.ls<-surf.ls(3,x,y,alt)
+alt.trsurf<-trmat(alt.ls, 0, 7, 0, 7, 100)
+par(pty="s",mar=c(2,2,2,2), mfrow=c(1,2))
+contour(alt.trsurf)
+points(x,y,pch=20)
+image(alt.trsurf)
+points(x,y,pch=20)
+par(mar=c(0,0,0,0))
+persp(alt.trsurf)
+persp(alt.trsurf,theta=60,phi=30,col=2,ltheta=-20,shade=0.25,xlab="longitud",ylab="latitud")
+detach(altitud)
+```
+
+En los distintos gráficos se puede observar lo siguiente:
+- En los gráficos de dos dimensiones aparece la nube de puntos sobre un espectro de colores en donde los más oscuros indican valores de altitud altos y los colores claros valores en altitud bajos. Además se muestran las curvas de nivel que dan información sobre cómo se distribuyen más o menos esas altitudes en el mapa con el que se está trabajando.
+- En los gráficos de tres dimensiones se aprecia la forma que tiene el terreno, en este caso la altitud se mide en otro eje y no mediante curvas de nivel.
+A modo de interpretación del gráfico, podría decirse que se está pintando un agujero, o barranco que hay en el monte al cual pertenecen estos datos.
+
+Una vez visto cómo es la forma más o menos de los datos en el espacio, el siguiente paso es la eliminación de la tendencia para poder generar un variograma sobre los residuos y de esa forma predecir el porcentaje de variabilidad que aun se desconoce.
+
+```{r, warning=FALSE,message=FALSE, fig.width=8, fig.height=8, fig.align="center"}
+# Eliminacion de tendencias
+alt.sin<-altitud[,3]-predict(alt.ls,altitud[,1],altitud[,2])
+alts.geo<-alt.geo
+alts.geo$data<-alt.sin
+plot.geodata(alts.geo)
+```
+
+Esta sería la variabilidad no explicada por el variograma anterior, se puede observar que los residuos están bastante mezclados (gráfico 1) lo cual indica que efectivamente se ha eliminado la tendencia con éxito. En los otros dos gráficos se puede observar cómo la disposición de los datos es bastante homogenea y no sigue un patrón de disposición concreto.
+
+A continuación realizo una gráfica del variograma de los residuos.
+
+```{r, warning=FALSE, message=FALSE, fig.width=6, fig.height=4, fig.align="center"}
+alts.v1<-variog(alts.geo,uvec=seq(0,8,1),max.dist=8,messages=F)
+plot(alts.v1,pch=20)
+```
+Se puede observar que la varianza de los residuos es de 500 (20%) en comparación a la del anterior que era de aproximadamente 6000 (80%).
+
+Al igual que se hizo anteriormente, se aproxima un modelo teórico al variograma empírico obtenido.
+
+```{r, warning=FALSE,message=FALSE, fig.width=6, fig.height=4, fig.align="center"}
+# Estimacion del variograma sin tendencia
+alts.exp.ml<-likfit(geodata = alts.geo, ini = c(400,1.9),messages=F)
+alts.sph.ml<-likfit(geodata = alts.geo, ini = c(400,1.9),cov.model="sph",messages=F)
+alts.mat.ml<-likfit(geodata = alts.geo, ini = c(400,1.9),cov.model="mat",kappa=1.5,messages=F)
+alts.mat2.ml<-likfit(geodata = alts.geo, ini = c(400,1.9),cov.model="mat",kappa=1,fix.nugget=T,messages=F)
+alts.cir.ml<-likfit(geodata = alts.geo, ini = c(400,1.9),cov.model="cir",messages=F)
+alts.gau.ml<-likfit(geodata = alts.geo, ini = c(400,1.9),cov.model="gau",messages=F)
+alts.cub.ml<-likfit(geodata = alts.geo, ini = c(400,1.9),cov.model="cub",messages=F)
+alts.pow.ml<-likfit(geodata = alts.geo, ini = c(400,1.9),cov.model="powered.exponential",kappa=1.75,messages=F)
+alts.pow2.ml<-likfit(geodata = alts.geo, ini = c(400,1.9),cov.model="powered.exponential",kappa=1.75,fix.nugget=T,messages=F)
+plot(alts.v1)
+lines(alts.pow2.ml,max.dist=8,lwd=2,col='red')
+lines(alts.mat2.ml,max.dist=8,lwd=2,col='blue')
+lines(alts.pow.ml,max.dist=8,lwd=2,col='green')
+lines(alts.mat.ml,max.dist=8,lwd=2,col='yellow')
+lines(alts.cub.ml,max.dist=8,lwd=2,col='orange')
+lines(alts.gau.ml,max.dist=8,lwd=2,col='cyan')
+lines(alts.cir.ml,max.dist=8,lwd=2,col='grey')
+lines(alts.exp.ml,max.dist=8,lwd=2,col='magenta')
+lines(alts.sph.ml,max.dist=8,lwd=2,col='pink')
+```
+
+Se puede apreciar que el modelo que mejor se ajusta es el obtenido por exponential (a mi parecer) por lo que será con él con el que se continue ajustado.
+
+```{r, warning=FALSE,message=FALSE, fig.width=6, fig.height=4, fig.align="center"}
+alts.exp.ml<-likfit(geodata = alts.geo, ini = c(400,2),messages=F)
+alts.exp.rml<-likfit(geodata = alts.geo, ini = c(400,2),method='RML',messages=F)
+alts.exp.ols<-variofit(vario = alts.v1, ini = c(400,2),weights="equal",minimisation.function="optim",messages=F)
+alts.exp.wls<-variofit(vario = alts.v1, ini = c(400,2),weights="npairs",messages=F)
+
+plot(alts.v1)
+lines(alts.exp.ml,max.dist=8,lwd=2)
+lines(alts.exp.rml,max.dist=8,lwd=2,lty=2)
+lines(alts.exp.ml,max.dist=8,lwd=2,lty=3)
+lines(alts.exp.rml,max.dist=8,lwd=2,lty=4)
+legend(4,300,legend=c('ML','RML','OLS','WLS'),lty=c(1,2,3,4))
+```
+
+Así es como se quedaría la curva final del modelo teórico ajustado a los datos de los residuos sin tendencia.
+
+A continuación se realizará una predicción mediante kriging ordinario con tendencia y sin tendencia y por kriging universal para realizar una comparación usando la función krige.conv(). Esta función se encargará de realizar la predicción espacial para parámetros de covarianza fijos utilizando vecindad global. Se predecirá el proceso sobre una red regular de puntos que cubren toda la región de estudio.
+Cuando se aplica esta técnica de predicción se asume que la variable es normal en cada uno de los puntos pero no puede verificarse esa normalidad porque probablemente esos valores vengan de normales distintas.
+
+Lo bueno de esta predicción es que se genera un gráfico para las estimaciones y otro para el error asociado a cada punto de la cuadrícula. Para que pueda entenderse mejor, la desviación típica de predicción es el error estándar de kriging.
+
+```{r, warning=FALSE,message=FALSE, fig.width=6, fig.height=6, fig.align="center"}
+loci <- expand.grid(seq(0,6.5,l=100), seq(0,6.5,l=200)) #Matriz de puntos a predecir
+
+evaltend<-function(superf,puntos){
+  predict(superf,puntos[,1],puntos[,2])}
+
+#Predicción espacial con tendencia
+kc1<-krige.conv(alt.geo,locations=loci,krige=krige.control(
+  cov.pars=alt.mat.ml$cov.pars,nugget=alt.mat.ml$nugget))
+
+#Predicción espacial sin tendencia
+kc2<-krige.conv(alts.geo,locations=loci,krige=krige.control(
+  cov.pars=alts.exp.ols$cov.pars,nugget=alts.exp.ols$nugget))
+
+#Predicción con kriging universal
+kc3<-krige.conv(alt.geo,locations=loci,krige=krige.control(trend.d=~evaltend(alt.ls,alt.geo$coords),trend.l=~evaltend(alt.ls,loci),cov.pars=alts.exp.ols$cov.pars,nugget=alts.exp.ols$nugget))
+```
+
+
+```{r, warning=FALSE,message=FALSE, fig.width=4, fig.height=4, fig.align="center"}
+# Intervalo de predicción 0.95 con el kriging ordinario
+predi1<-function(i)
+  c(kc1$predict[i]-1.96*sqrt(kc1$krige.var[i]),
+  kc1$predict[i]+1.96*sqrt(kc1$krige.var[i]))
+predi1(9247)
+# Intervalo de predicción 0.95 con el kriging sobre los residuos
+predi2<-function(i)
+  c(kc2$predict[i]+evaltend(alt.ls,loci[i,])-1.96*sqrt(kc2$krige.var[i]),
+  kc2$predict[i]+evaltend(alt.ls,loci[i,])+1.96*sqrt(kc2$krige.var[i]))
+predi2(9247)
+# Intervalo de predicción 0.95 con el kriging universal
+predi3<-function(i)
+  c(kc3$predict[i]-1.96*sqrt(kc3$krige.var[i]),
+  kc3$predict[i]+1.96*sqrt(kc3$krige.var[i]))
+predi3(9247)
+```
+Las predicciones obtenidas mediante el kriging ordinario con tendencia tienen un intervalo de confianza (716.7934, 1136.8216) mayor que las predicciones obtenidas por el kriging ordinario sin tendencia (877.3767 ,956.0624) y el universal (876.2120, 956.0472). 
+El kriging universal, en contraposición al ordinario, permitie que el valor medio del proceso no sea constante, sino una combinación lineal de covariables ligadas a las mismas localizaciones o de funciones conocidas. 
+Por lo que se abstrae que las predicciones mediante kriging universal y kriging sin tendencia son más acertadas que las obtenidas mediante el kriging ordinario con tendencia.
+
+Finalmente se realizará un gráfico obtenido mediante el método de kriging usando los residuos sin tendencia para ver cuál es el aspecto final de la superficie.
+
+```{r}
+#Representación de
+image(kc2,loc=loci,val=kc2$predict+evaltend(alt.ls,loci),
+  main='estimacion kriging')
+image(kc2,loc=loci,val=sqrt(kc2$krige.var),
+  main='error estandar')
+persp(kc2,loc=loci,val=kc2$predict+evaltend(alt.ls,loci),
+   main='estimacion kriging',phi=30,theta=45)
+persp(kc2,loc=loci,val=sqrt(kc2$krige.var),
+  main='error estandar')
+```
+Los resultados obtenidos muestran la representación de los valores predichos por el kriging sin tendencia y también del error que este haya podido cometer en la estimación. Al igual que en los gráficos anteriores, el color más oscurro corresponde a zonas de mayor altitud y el claro a zonas donde la altitud es menor, se aprecia que el error estandar en esta gráfica está dispuesto de forma bastante homogénea. 
+Por otro lado, cuando se observa el gráfico en tres dimensiones se aprecia la forma final obtenida de os datos con los que se trabajan, se puede apreciar la forma del monte y lo que se veia anteriormente que parecía un barranco aquí se puede ver que correspondía a la ladera. 
+
+Este mismo procedimiento puede realizarse mediante kriging universal y ordinario con tendencia, sin embargo no lo he incluido aquí porque los resultados obtenidos eran prácticamente iguales.
+
+
+
+
+
+
+
+
+
+
+

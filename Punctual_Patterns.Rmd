@@ -1,0 +1,399 @@
+---
+title: "Práctica 3: Exploración de patrones puntuales"
+author: "Antonio López Quílez"
+#geometry: margin=2.5cm
+geometry: "left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm"
+output: word_document
+   
+---
+
+<!-- ```{r global_options, include=FALSE, message=FALSE,fig.align="center"} -->
+<!--  knitr::opts_chunk$set(warning=FALSE) -->
+<!-- ``` -->
+
+ <!-- fig.width=10,fig.height=4 -->
+ 
+<!-- warning=FALSE, error=FALSE, echo=FALSE,include=FALSE-->
+
+```{r setup,warning=FALSE, error=FALSE, echo=FALSE,fig.width=10,fig.height=4}
+  library(knitr)
+  opts_knit$set(root.dir = "D:/Desktop/Remember/Estudios/Educación Formal/Máster/Máster Valencia/Bioestadística/Curso 1/20 3-6Modelización Avanzada/Estadística Espacial/Prácticas/Práctica 2")
+  knitr::opts_chunk$set(fig.width=6, fig.height=4) 
+```
+
+En esta práctica se realizará un estudio descriptivo de cuatro patrones puntuales empleando métodos basados en quadrats y métodos de distancia. En esta práctica se usarán las funciones programadas del fichero $\texttt{utilpp.r}$ y que pueden ser activadas con el comando $\texttt{source()}$.
+Se explorarán 4 patrones puntuales diferentes:
+
+```{r,warning=FALSE, error=FALSE, echo=FALSE,fig.width=10,fig.height=4}
+# Lectura 
+arces<-matrix(scan('arces.d'),ncol=2,byrow=T)
+robles<-matrix(scan('robles.d'),ncol=2,byrow=T)
+secuoyas<-matrix(scan('secuoyas.d'),ncol=2,byrow=T)
+pinos<-source('pinos.r')
+pinos<- pinos[[1]]
+```
+
+# Conteos por quadrats
+
+La independencia entre las localizaciones de los puntos conduce al concepto de aleatoriedad espacial completa. Las desviaciones con respecto a esta situación pueden darse hacia una mayor regularidad o hacia un mayor agrupamiento, creando grupos de puntos muy próximos. 
+Primero se comenzará realizando un plot de los distintos patrones puntuales, los cuales corresponden a la disposición de unos arces, robles, secuoyas y pinos.
+
+```{r,fig.align="center",fig.width=13,fig.height=5}
+# Cargamos las funciones
+source('utilpp.r')
+par(mfrow=c(2,2))
+# Representación del patrón puntual en una región cuadrada
+par(pty='s')
+plot(arces,pch=20,xlab='x',ylab='y',main='Arces')
+plot(robles,pch=20,xlab='x',ylab='y',main='Robles')
+plot(secuoyas,pch=20,xlab='x',ylab='y',main='Secuoyas')
+plot(pinos,pch=20,xlab='x',ylab='y',main='Pinos')
+```
+
+A simple vista se puede observar diferencias entre unas gráficas y otras, por ejemplo los pinos se distribuyen de una forma más uniforme que los arces. Sin embargo, para poder ver si se cumple la hipótesis de aleatoriedad completa o por el contrario los patrones están agrupados o dispuestos regularmente se harán uso de distintos métodos.
+
+## Análisis mediante un grid de quadrats.
+
+Una forma de utilizar los quadrats es realizando una partición de la región de estudio en quadrats de igual área. El test $\chi²$ proporciona una valoración de la hipótesis de aleatoriedad espacial completa, en donde la hipótesis nula indica que hay una aletoriedad completa mientras que la hipótesis alternativa completa que hay un tipo de agregación o disposición regular del patrón.
+
+```{r,fig.align="center",fig.width=13,fig.height=5}
+#Arces
+par(mfrow=c(1,2),pty="s")
+#Arces
+plot(arces,xlim=c(0,1),ylim=c(0,1),xlab="",ylab="",xaxs="i",yaxs="i",pch=20,main='Arces')
+# La función dibu.qua() dibuja las líneas de un grid de quadrats (4x4)
+dibu.qua(4,4)
+# La función cuenta.qua() contabiliza cuantos sucesos hay en cada quadrat
+nump.ar<-c(cuenta.qua(arces,4,4))
+# El test chi-cuadrado de bondad de ajuste con los conteos observados y con todos los esperados iguales
+chisq.test(nump.ar)#Significativo
+indices.qua(nump.ar)
+
+#Robles
+plot(robles,xlim=c(0,1),ylim=c(0,1),xlab="",ylab="",xaxs="i",yaxs="i",pch=20,main='Robles')
+dibu.qua(4,4)
+nump.ro<-c(cuenta.qua(robles,4,4))
+chisq.test(nump.ro) #Significativo
+indices.qua(nump.ro)
+
+#Secuoyas
+par(mfrow=c(1,2),pty="s")
+plot(secuoyas,xlim=c(0,1),ylim=c(0,1),xlab="",ylab="",xaxs="i",yaxs="i",pch=20,main='Secuoyas')
+dibu.qua(4,4)
+nump.sec<-c(cuenta.qua(secuoyas,4,4))
+chisq.test(nump.sec) #Significativo
+indices.qua(nump.sec)
+
+#Pinos
+plot(pinos,xlim=c(0,1),ylim=c(0,1),xlab="",ylab="",xaxs="i",yaxs="i",pch=20,main='Pinos')
+dibu.qua(4,4)
+nump.pi<-c(cuenta.qua(pinos,4,4))
+chisq.test(nump.pi) #No significativo. Aleatorio
+indices.qua(nump.pi)
+
+
+```
+
+Mediante el test chi cuadrado se aprecia que tanto arces, como robles y secuoyas presentan un patrón que para nada es aleatorio (sus p valores se encuentra en la región de rechazo de la cola izquierda).
+Por el contrario, los pinos presentan un p valor de 0.9198, el cual indica que se encuentra muy cercano a la región de rechazo de la cola izquierda de la distribución. Sin embargo, entra dentro del intervalo al 95% lo cual indica que el patrón puntual de pinos si que puede estar experimentando una disposición aleatoria completa.
+
+## Análisis mediante un muestreo con quadrats aleatorios.
+
+La exploración por quadrats aleatorios permite calcular distintos índices de agrupamiento,destacando la varianza relativa, el índice de David-Moore, el índice de desigualdad de Lloyd (similar al anterior pero centrado en 0), y el de Morisita (que da información sobre grado de agrupación aunque no es un indicador muy informativo).
+
+```{r, fig.align="center",fig.width=13,fig.height=5}
+# La función Simqalea() simula los centros de 20 quadrats de radio 0.08
+par(mfrow=c(1,2))
+centros<-Simqalea(20,0.08)
+plot(arces,xlim=c(0,1),ylim=c(0,1),xlab="",ylab="",xaxs="i",yaxs="i",pch=20,main='Arces')
+# La función dibalea.qua() dibuja los quadrats circulares simulados
+dibalea.qua(centros)
+# La función cupenl.qua() calcula cuantos sucesos hay en cada quadrat
+nump.qua<-cupenl.qua(arces,centros)
+# La función indices.qua() calcula los índices de agrupación
+indices.qua(nump.qua)
+
+plot(robles,xlim=c(0,1),ylim=c(0,1),xlab="",ylab="",xaxs="i",yaxs="i",pch=20,main = 'Robles')
+dibalea.qua(centros)
+nump.qro<-cupenl.qua(robles,centros)
+indices.qua(nump.qro)
+
+par(mfrow=c(1,2))
+plot(secuoyas,xlim=c(0,1),ylim=c(0,1),xlab="",ylab="",xaxs="i",yaxs="i",pch=20,main='Secuoyas')
+dibalea.qua(centros)
+nump.qsec<-cupenl.qua(secuoyas,centros)
+indices.qua(nump.qsec)
+
+plot(pinos,xlim=c(0,1),ylim=c(0,1),xlab="",ylab="",xaxs="i",yaxs="i",pch=20,main='Pinos')
+dibalea.qua(centros)
+nump.qpi<-cupenl.qua(pinos,centros)
+indices.qua(nump.qpi)
+```
+
+En arces, robles y secuoyas la varianza relativa se aleja bastante de 1 lo cual indica que la varianza es mayor que la media y por lo tanto e estos casos hay una clara agrupación de los sucesos. Por el contrario en el caso de los pinos, el valor es de 0.33 lo cual indica que la media es mayor que la varianza y la disposición de los sucesos es mas bien regular.
+
+El índice de David-Moore da la misma información que el anterior solo que esté está centrado en 0, por lo que los valores positivos se corresponden a patrones agrupados (arces, robles y secuoyas) y valores negativos con patrones regulares (pinos).
+
+La desigualdad de Lloyd es igual que el anterior pero en estecaso centrada en 1. Y el índice de Morisita hace alusión al grado de agrupamiento de los sucesos, en donde el grado de agrupación de arces sería mayor que el de robles y este mayor que el de secuoyas y este a su vez mayor que el de pinos.
+
+# Métodos de distancia
+
+El otro método para testar la aleatoriedad completa de los fenómenos va a ser el uso de los métodos de distancia. 
+A diferencia de los anteriores, estos utilizan la información exacta de dónde se encuentran los puntos, por lo que no va a depender de elecciones arbitrarias como ocurre en el método de quadrats.
+
+Se utilizará la distancia entre sucesos y al vecino más próximo, y por otro lado de m puntos a sus vecinos más próximos. Finalmente compararé lo obtenido de las tres técnicas.
+
+Las funciones de distribución de estos tres tipos de distancias se designan por H, G y F. En el caso de que las localizaciones sean independientes, estas funciones serán conocidas, por lo que podrán compararse con las funciones de distribución empíricas del patrón puntual.
+
+Primero se comenzará con el método de distancias entre sucesos.
+
+## Distancias entre sucesos
+
+En este método se mide la distancia exacta entre unos sucesos y otros.
+Esto tiene una distribución de probabilidad $Poisson$ de parámetro $\lambda$ por lo que se puede calcular su función de distribución empírica, también puede calcularse la teórica y además realizar simulaciones para posteriormente representarlo todo en conjunto.
+
+```{r, fig.align="center",fig.width=13,fig.height=5}
+# Calculamos todas las distancias entre los sucesos
+# La función genérica dist() crea una matriz (n,n) de distancias
+# La función sort() ordena y convierte en vector las n*(n-1)/2 distancias
+#Arces
+distanar<-sort(dist(arces))
+par(mfrow=c(1,2))
+hist(distanar,main='Arces')
+# La función genérica ecdf() calcula la función de distribución acumulada empírica 
+Argorro <- ecdf(distanar)
+plot(Argorro, verticals= TRUE, do.p = F,main='Arces')
+
+#Robles
+distanro<-sort(dist(robles))
+hist(distanro,main='Robles')
+Rogorro <- ecdf(distanro)
+plot(Rogorro, verticals= TRUE, do.p = F,main='Robles')
+
+#Secuoyas
+par(mfrow=c(1,2))
+distanse<-sort(dist(secuoyas))
+hist(distanse,main='Secuoyas')
+Segorro <- ecdf(distanse)
+plot(Segorro, verticals= TRUE, do.p = F,main='Secuoyas')
+
+#Pinos
+distanpi<-sort(dist(pinos))
+hist(distanpi,main='Pinos')
+Pigorro <- ecdf(distanpi)
+plot(Pigorro, verticals= TRUE, do.p = F,main='Pinos')
+```
+
+En los hitogramas aparece la frecuencia con la que aparece una determinada distancia entre los distintos sucesos. En todos los histogramas se observa que la mayor parte de las distancias quedan a la derecha de la mediana. 
+Por otro lado, en la gráfica de la derecha se ilustra la función distribución acumulada empírica de cada conjunto de patrones puntuales. 
+
+A continuación se realizan las curvas que permitirán ver de forma más sencilla cuál es el grado de agrupamiento o regularidad en los patrones.
+
+```{r,fig.align="center",fig.width=13,fig.height=5}
+par(mfrow=c(1,2))
+#Arces
+# Compararemos la distribución empírica con la teórica Ht()
+plot(sapply(distanar,Ht),Argorro(distanar),type="l",main='Arces')
+# La línea roja marca el ajuste perfecto con la aleatoridad espacial completa
+abline(0,1,col=2)
+# La función Henvl() calcula 19 simulaciones de patrones completamente aleatorios 
+# y determina el mínimo y el máximo de la función H empírica para cada distancia
+limsar<-Henvl(19,arces)
+# Se pintan en verde los límites inferior y superior de las simulaciones
+lines(sapply(limsar$xl,Ht),Argorro(distanar),col="green")
+lines(sapply(limsar$xu,Ht),Argorro(distanar),col="green")
+
+#Robles
+plot(sapply(distanro,Ht),Rogorro(distanro),type="l",main='Robles')
+abline(0,1,col=2)
+limsro<-Henvl(19,robles)
+lines(sapply(limsro$xl,Ht),Rogorro(distanro),col="green")
+lines(sapply(limsro$xu,Ht),Rogorro(distanro),col="green")
+
+par(mfrow=c(1,2))
+#Secuoyas
+plot(sapply(distanse,Ht),Segorro(distanse),type="l",main='Secuoyas')
+abline(0,1,col=2)
+limssec<-Henvl(19,secuoyas)
+lines(sapply(limssec$xl,Ht),Segorro(distanse),col="green")
+lines(sapply(limssec$xu,Ht),Segorro(distanse),col="green")
+
+#Pinos
+plot(sapply(distanpi,Ht),Pigorro(distanpi),type="l",main='Pinos')
+abline(0,1,col=2)
+limspi<-Henvl(19,pinos)
+lines(sapply(limspi$xl,Ht),Pigorro(distanpi),col="green")
+lines(sapply(limspi$xu,Ht),Pigorro(distanpi),col="green")
+```
+
+En rojo aparece la distribución teórica de las distancias, en negro la distribución empírica, en verde son los máximos y mínimos de 19 simulaciones (con el patrón observado 20) de patrones completamente aleatorios. 
+De modo que si fuese un patrón completamente aleatorio y la linea negra es la mas extrema, es decir, que salga fuera del espacio que hay entre las lineas verdes, la probabilidad sería de 1/20 y dejaría una probabilidad de 0.05. 
+
+En el caso de los arces, la linea negra queda por encima de la linea verde superior, lo cual indica que hay un agrupamiento en el patrón observado.
+Por el contrario, robles y secuoyas queda ligeramente superando la linea verde de la parte inferior, lo cual es un indicador de regularidad en el patrón puntual de estos árboles.
+En contraposición a los anteriores, el patrón puntual perteneciente a los pinos queda perfectamente entre ambas lineas verdes, lo cual significa que la disposición de los pinos en el espacio sigue un patrón completamente aleatorio según este método.
+
+## Distancias al vecino más próximo
+
+Finalmente, el método del vecino más próximo consiste en medir las distancias entre un suceso con el del suceso más próximo. 
+Sigue el mismo procedimiento que el caso anterior.
+
+```{r,fig.align="center",fig.width=13,fig.height=5}
+par(mfrow=c(1,2))
+#Arces
+# La función calcdvmp() calcula las distancias al vecino más próximo
+distvmpar<-sort(calcdvmp(arces))
+par(mfrow=c(1,2))
+hist(distvmpar)
+# La función genérica ecdf() calcula la función de distribución acumulada empírica 
+# Probabilidad acumulada de encontrar esa distancia
+Argorro <- ecdf(distvmpar)
+plot(Argorro, verticals= TRUE, do.p = F,main='Arces')
+
+#Robles
+distvmpro<-sort(calcdvmp(robles))
+par(mfrow=c(1,2))
+hist(distvmpro,main='Robles')
+Rogorro <- ecdf(distvmpro)
+plot(Rogorro, verticals= TRUE, do.p = F,main='Robles')
+
+par(mfrow=c(1,2))
+#Secuoyas
+distvmpse<-sort(calcdvmp(secuoyas))
+par(mfrow=c(1,2))
+hist(distvmpse,main='Secuoyas')
+Segorro <- ecdf(distvmpse)
+plot(Segorro, verticals= TRUE, do.p = F,main='Secuoyas')
+
+#Pinos
+distvmppi<-sort(calcdvmp(pinos))
+par(mfrow=c(1,2))
+hist(distvmppi,main='Pinos')
+Pigorro <- ecdf(distvmppi)
+plot(Pigorro, verticals= TRUE, do.p = F,main='Pinos')
+```
+
+En contraposición a la anterior, el número de datos obtenidos es menor y por ello las funciones de densidad son a su vez menos suaves.
+Para ver de forma más clara el fenómeno de agrupamiento y regularidad nos fijamos en la siguientes gráficas.
+
+```{r, fig.align="center",fig.width=13,fig.height=5}
+par(mfrow=c(1,2))
+#Arces
+# Compararemos la distribución empírica con la teórica Gt()
+plot(sapply(distvmpar,Gt,nrow(arces)),Argorro(distvmpar),type="l",main='Arces')
+abline(0,1,col=2)
+limsar<-Genvl(19,arces)
+lines(sapply(limsar$xl,Gt,nrow(arces)),Argorro(distvmpar),col="green")
+lines(sapply(limsar$xu,Gt,nrow(arces)),Argorro(distvmpar),col="green")
+
+#Robles
+plot(sapply(distvmpro,Gt,nrow(robles)),Rogorro(distvmpro),type="l",main='Robles')
+abline(0,1,col=2)
+limsro<-Genvl(19,robles)
+lines(sapply(limsro$xl,Gt,nrow(robles)),Rogorro(distvmpro),col="green")
+lines(sapply(limsro$xu,Gt,nrow(robles)),Rogorro(distvmpro),col="green")
+
+par(mfrow=c(1,2))
+#Secuoyas
+plot(sapply(distvmpse,Gt,nrow(secuoyas)),Segorro(distvmpse),type="l",main='Secuoyas')
+abline(0,1,col=2)
+limsse<-Genvl(19,secuoyas)
+lines(sapply(limsse$xl,Gt,nrow(secuoyas)),Segorro(distvmpse),col="green")
+lines(sapply(limsse$xu,Gt,nrow(secuoyas)),Segorro(distvmpse),col="green")
+
+#Pinos
+plot(sapply(distvmppi,Gt,nrow(pinos)),Pigorro(distvmppi),type="l",main='Pinos')
+abline(0,1,col=2)
+limspi<-Genvl(19,pinos)
+lines(sapply(limspi$xl,Gt,nrow(pinos)),Pigorro(distvmppi),col="green")
+lines(sapply(limspi$xu,Gt,nrow(pinos)),Pigorro(distvmppi),col="green")
+```
+
+Estos gráficos se interpretan de la misma forma que los anteriores sin embargo los resultados son distintos:
+- Los robles en este caso si que seguirían un patrón completamente aleatorio.
+- En este caso los pinos seguirían un patrón regular.
+- Mientras que los arces y las secuoyas se encuentran de manera agrupada en el espacio.
+
+Para tener una tercera opinión se realizará el método de distancias de un punta al suceso más próximo.
+
+## Distancias de un punto al suceso más próximo
+
+Este método consiste en la generación de puntos de forma aleatoria y de medir la distancia de estos al suceso más próximo. 
+En contraste con los métodos de distancias anteriores, la interpretación de las gráficas es al contrario. 
+
+```{r, fig.align="center",fig.width=13,fig.height=5}
+par(mfrow=c(1,2))
+#Arces
+# La función calcdpsmp() calcula las distancias desde 8*8 puntos aleatorios a los sucesos más próximos
+distpsmpar<-sort(caldpsmp(arces,8))
+par(mfrow=c(1,2))
+hist(distpsmpar,main='Arces')
+# La función genérica ecdf() calcula la función de distribución acumulada empírica 
+argorro <- ecdf(distpsmpar)
+plot(argorro, verticals= TRUE, do.p = F,main='Arces')
+
+#Robles
+distpsmpro<-sort(caldpsmp(robles,8))
+par(mfrow=c(1,2))
+hist(distpsmpro,main='Robles')
+rogorro <- ecdf(distpsmpro)
+plot(rogorro, verticals= TRUE, do.p = F,main='Robles')
+
+par(mfrow=c(1,2))
+#Secuoyas
+distpsmpse<-sort(caldpsmp(secuoyas,8))
+par(mfrow=c(1,2))
+hist(distpsmpse,main='Secuoyas')
+segorro <- ecdf(distpsmpse)
+plot(segorro, verticals= TRUE, do.p = F,main='Secuoyas')
+
+#Pinos
+distpsmppi<-sort(caldpsmp(pinos,8))
+par(mfrow=c(1,2))
+hist(distpsmppi,main='Pinos')
+pigorro <- ecdf(distpsmppi)
+plot(pigorro, verticals= TRUE, do.p = F,main='Pinos')
+```
+
+A diferencia de los dos anteriores la cantidad de valores es mucho menor debido a que calcula las distancias desde 8*8 puntos aleatorios a los sucesos más próximos. Por ello la función de densidad es mucho más escalonada en todas y los histogramas presentan tan pocos valores.
+
+```{r, fig.align="center",fig.width=13,fig.height=5}
+
+par(mfrow=c(1,2))
+#Arces
+# Compararemos la distribución empírica con la teórica Gt()
+plot(sapply(distpsmpar,Gt,nrow(arces)),argorro(distpsmpar),type="l",main='Arces')
+abline(0,1,col=2)
+limsar<-Fenvl(19,arces,8)
+lines(sapply(limsar$xl,Gt,nrow(arces)),argorro(distpsmpar),col="green")
+lines(sapply(limsar$xu,Gt,nrow(arces)),argorro(distpsmpar),col="green")
+
+#Robles
+plot(sapply(distpsmpro,Gt,nrow(robles)),rogorro(distpsmpro),type="l",main='Robles')
+abline(0,1,col=2)
+limsro<-Fenvl(19,robles,8)
+lines(sapply(limsro$xl,Gt,nrow(robles)),rogorro(distpsmpro),col="green")
+lines(sapply(limsro$xu,Gt,nrow(robles)),rogorro(distpsmpro),col="green")
+
+par(mfrow=c(1,2))
+#Secuoyas
+plot(sapply(distpsmpse,Gt,nrow(secuoyas)),segorro(distpsmpse),type="l",main='Secuoyas')
+abline(0,1,col=2)
+limsse<-Fenvl(19,secuoyas,8)
+lines(sapply(limsse$xl,Gt,nrow(secuoyas)),segorro(distpsmpse),col="green")
+lines(sapply(limsse$xu,Gt,nrow(secuoyas)),segorro(distpsmpse),col="green")
+
+#Pinos
+plot(sapply(distpsmppi,Gt,nrow(pinos)),pigorro(distpsmppi),type="l",main='Pinos')
+abline(0,1,col=2)
+limspi<-Fenvl(19,pinos,8)
+lines(sapply(limspi$xl,Gt,nrow(pinos)),pigorro(distpsmppi),col="green")
+lines(sapply(limspi$xu,Gt,nrow(pinos)),pigorro(distpsmppi),col="green")
+```
+
+Mediante este método se puede observar que:
+- El patrón de arces queda por debajo de los valores mínimos, por lo que es un patrón agrupado, igual que aparecía en el anterior.
+- En contraposición al anterior pinos queda por encima siendo un patrón regular, cosa que ya había aparecido anteriormente.
+- Robles y secuoyas se encuentran entre ambos intervalos simulados, por lo que presentan un patrón de disposición aleatorio. Sin embargo, parece ser que robles tiende ligeramente a la a un patrón agrupado pues sobrepasa varias veces el límite mínimo.
+
+A MODO DE CONCLUSIÓN
